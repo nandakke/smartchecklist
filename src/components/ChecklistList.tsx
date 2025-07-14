@@ -115,6 +115,21 @@ const ChecklistList: React.FC<ChecklistListProps> = ({ onEdit }) => {
                   </span>
                 </div>
 
+                {checklist.directoryPath && (
+                  <div className="checklist-directory">
+                    <button
+                      className="directory-link"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDirectory(checklist.directoryPath!);
+                      }}
+                      title={`フォルダを開く: ${checklist.directoryPath}`}
+                    >
+                      📁 {formatPathForDisplay(checklist.directoryPath)}
+                    </button>
+                  </div>
+                )}
+
                 <div className="checklist-items-preview">
                   {checklist.items.slice(0, 3).map(item => (
                     <div key={item.id} className="preview-item">
@@ -124,18 +139,6 @@ const ChecklistList: React.FC<ChecklistListProps> = ({ onEdit }) => {
                       <span className={`item-text ${item.completed ? 'completed' : ''}`}>
                         {item.content}
                       </span>
-                      {item.directoryPath && (
-                        <button
-                          className="directory-link"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDirectory(item.directoryPath!);
-                          }}
-                          title={`フォルダを開く: ${item.directoryPath}`}
-                        >
-                          📁 {formatPathForDisplay(item.directoryPath)}
-                        </button>
-                      )}
                     </div>
                   ))}
                   {checklist.items.length > 3 && (
@@ -169,17 +172,14 @@ const ChecklistForm: React.FC<ChecklistFormProps> = ({ checklist, onCancel }) =>
   const { state, actions } = useApp();
   const [name, setName] = useState(checklist?.name || '');
   const [description, setDescription] = useState(checklist?.description || '');
+  const [directoryPath, setDirectoryPath] = useState(checklist?.directoryPath || '');
   const [selectedTemplateId, setSelectedTemplateId] = useState(checklist?.templateId || '');
   const [items, setItems] = useState<ChecklistItem[]>(
-    checklist?.items.map(item => ({
-      ...item,
-      directoryPath: item.directoryPath || ''
-    })) || [{ 
+    checklist?.items || [{ 
       id: crypto.randomUUID(), 
       content: '', 
       completed: false, 
-      order: 0,
-      directoryPath: ''
+      order: 0
     }]
   );
 
@@ -189,12 +189,12 @@ const ChecklistForm: React.FC<ChecklistFormProps> = ({ checklist, onCancel }) =>
     if (templateId) {
       const template = state.templates.find(t => t.id === templateId);
       if (template) {
+        setDirectoryPath(template.directoryPath || '');
         setItems(template.items.map(item => ({
           id: crypto.randomUUID(),
           content: item.content,
           completed: false,
           order: item.order,
-          directoryPath: (item as any).directoryPath || '',
         })));
       }
     }
@@ -205,20 +205,13 @@ const ChecklistForm: React.FC<ChecklistFormProps> = ({ checklist, onCancel }) =>
       id: crypto.randomUUID(), 
       content: '', 
       completed: false,
-      order: items.length,
-      directoryPath: ''
+      order: items.length
     }]);
   };
 
   const updateItem = (id: string, content: string) => {
     setItems(items.map(item => 
       item.id === id ? { ...item, content } : item
-    ));
-  };
-
-  const updateItemPath = (id: string, directoryPath: string) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, directoryPath } : item
     ));
   };
 
@@ -250,12 +243,12 @@ const ChecklistForm: React.FC<ChecklistFormProps> = ({ checklist, onCancel }) =>
       name: name.trim(),
       description: description.trim(),
       templateId: selectedTemplateId || undefined,
+      directoryPath: directoryPath.trim() || undefined,
       items: validItems.map((item, index) => ({
         id: item.id,
         content: item.content.trim(),
         completed: item.completed,
         order: index,
-        directoryPath: item.directoryPath || undefined,
       })),
     };
 
@@ -307,6 +300,36 @@ const ChecklistForm: React.FC<ChecklistFormProps> = ({ checklist, onCancel }) =>
           />
         </div>
 
+        <div className="form-group">
+          <label htmlFor="directoryPath">ディレクトリパス（任意）</label>
+          <div className="directory-path-input">
+            <input
+              id="directoryPath"
+              type="text"
+              value={directoryPath}
+              onChange={(e) => setDirectoryPath(e.target.value)}
+              placeholder="例: C:\Users\username\Projects\MyProject"
+              className="directory-input"
+            />
+            {directoryPath && validatePath(directoryPath) && (
+              <button
+                type="button"
+                className="test-path-btn"
+                onClick={() => openDirectory(directoryPath)}
+                title="フォルダを開いてテスト"
+              >
+                📁
+              </button>
+            )}
+            {directoryPath && !validatePath(directoryPath) && (
+              <span className="path-error" title="無効なパス形式です">
+                ⚠️
+              </span>
+            )}
+          </div>
+          <small className="form-help">このチェックリストで作業するフォルダのパスを設定</small>
+        </div>
+
         {!checklist && state.templates.length > 0 && (
           <div className="form-group">
             <label htmlFor="template">テンプレートから作成</label>
@@ -336,37 +359,13 @@ const ChecklistForm: React.FC<ChecklistFormProps> = ({ checklist, onCancel }) =>
                   onChange={() => toggleItem(item.id)}
                 />
                 <span className="item-number">{index + 1}.</span>
-                <div className="item-inputs">
-                  <input
-                    type="text"
-                    value={item.content}
-                    onChange={(e) => updateItem(item.id, e.target.value)}
-                    placeholder="チェック項目を入力..."
-                    className={item.completed ? 'completed' : ''}
-                  />
-                  <input
-                    type="text"
-                    value={item.directoryPath || ''}
-                    onChange={(e) => updateItemPath(item.id, e.target.value)}
-                    placeholder="ディレクトリパス（任意）: C:\Users\..."
-                    className="directory-input"
-                  />
-                  {item.directoryPath && validatePath(item.directoryPath) && (
-                    <button
-                      type="button"
-                      className="test-path-btn"
-                      onClick={() => openDirectory(item.directoryPath!)}
-                      title="フォルダを開いてテスト"
-                    >
-                      📁
-                    </button>
-                  )}
-                  {item.directoryPath && !validatePath(item.directoryPath) && (
-                    <span className="path-error" title="無効なパス形式です">
-                      ⚠️
-                    </span>
-                  )}
-                </div>
+                <input
+                  type="text"
+                  value={item.content}
+                  onChange={(e) => updateItem(item.id, e.target.value)}
+                  placeholder="チェック項目を入力..."
+                  className={item.completed ? 'completed' : ''}
+                />
                 {items.length > 1 && (
                   <button
                     type="button"

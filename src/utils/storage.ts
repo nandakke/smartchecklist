@@ -135,6 +135,7 @@ export const checklistStorage = {
       name,
       description: description || template.description,
       templateId: template.id,
+      directoryPath: template.directoryPath,
       items: template.items.map(item => ({
         ...item,
         id: crypto.randomUUID(),

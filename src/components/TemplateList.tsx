@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Template } from '../types';
 import { useApp } from '../context/AppContext';
-import { validatePath, openDirectory } from '../utils/pathUtils';
+import { validatePath, openDirectory, formatPathForDisplay } from '../utils/pathUtils';
 
 interface TemplateListProps {
   onEdit: (template: Template) => void;
@@ -84,6 +84,21 @@ const TemplateList: React.FC<TemplateListProps> = ({ onEdit }) => {
                   </span>
                 </div>
                 
+                {template.directoryPath && (
+                  <div className="template-directory">
+                    <button
+                      className="directory-link"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDirectory(template.directoryPath!);
+                      }}
+                      title={`フォルダを開く: ${template.directoryPath}`}
+                    >
+                      📁 {formatPathForDisplay(template.directoryPath)}
+                    </button>
+                  </div>
+                )}
+                
                 <div className="template-items-preview">
                   {template.items.slice(0, 3).map(item => (
                     <div key={item.id} className="preview-item">
@@ -124,31 +139,22 @@ const TemplateForm: React.FC<TemplateFormProps> = ({ template, onCancel }) => {
   const { actions } = useApp();
   const [name, setName] = useState(template?.name || '');
   const [description, setDescription] = useState(template?.description || '');
+  const [directoryPath, setDirectoryPath] = useState(template?.directoryPath || '');
   const [items, setItems] = useState(
-    template?.items.map(item => ({
-      ...item,
-      directoryPath: (item as any).directoryPath || ''
-    })) || [{ id: crypto.randomUUID(), content: '', order: 0, directoryPath: '' }]
+    template?.items || [{ id: crypto.randomUUID(), content: '', order: 0 }]
   );
 
   const addItem = () => {
     setItems([...items, { 
       id: crypto.randomUUID(), 
       content: '', 
-      order: items.length,
-      directoryPath: ''
+      order: items.length
     }]);
   };
 
   const updateItem = (id: string, content: string) => {
     setItems(items.map(item => 
       item.id === id ? { ...item, content } : item
-    ));
-  };
-
-  const updateItemPath = (id: string, directoryPath: string) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, directoryPath } : item
     ));
   };
 
@@ -173,11 +179,11 @@ const TemplateForm: React.FC<TemplateFormProps> = ({ template, onCancel }) => {
     const templateData = {
       name: name.trim(),
       description: description.trim(),
+      directoryPath: directoryPath.trim() || undefined,
       items: validItems.map((item, index) => ({
         id: item.id,
         content: item.content.trim(),
         order: index,
-        directoryPath: (item as any).directoryPath || undefined,
       })),
     };
 
@@ -221,41 +227,47 @@ const TemplateForm: React.FC<TemplateFormProps> = ({ template, onCancel }) => {
         </div>
 
         <div className="form-group">
+          <label htmlFor="directoryPath">ディレクトリパス（任意）</label>
+          <div className="directory-path-input">
+            <input
+              id="directoryPath"
+              type="text"
+              value={directoryPath}
+              onChange={(e) => setDirectoryPath(e.target.value)}
+              placeholder="例: C:\Users\username\Projects\MyProject"
+              className="directory-input"
+            />
+            {directoryPath && validatePath(directoryPath) && (
+              <button
+                type="button"
+                className="test-path-btn"
+                onClick={() => openDirectory(directoryPath)}
+                title="フォルダを開いてテスト"
+              >
+                📁
+              </button>
+            )}
+            {directoryPath && !validatePath(directoryPath) && (
+              <span className="path-error" title="無効なパス形式です">
+                ⚠️
+              </span>
+            )}
+          </div>
+          <small className="form-help">このテンプレートから作成されるチェックリストに自動的に設定されます</small>
+        </div>
+
+        <div className="form-group">
           <label>チェック項目 *</label>
           <div className="items-list">
             {items.map((item, index) => (
               <div key={item.id} className="item-input-group">
                 <span className="item-number">{index + 1}.</span>
-                <div className="item-inputs">
-                  <input
-                    type="text"
-                    value={item.content}
-                    onChange={(e) => updateItem(item.id, e.target.value)}
-                    placeholder="チェック項目を入力..."
-                  />
-                  <input
-                    type="text"
-                    value={(item as any).directoryPath || ''}
-                    onChange={(e) => updateItemPath(item.id, e.target.value)}
-                    placeholder="ディレクトリパス（任意）: C:\Users\..."
-                    className="directory-input"
-                  />
-                  {(item as any).directoryPath && validatePath((item as any).directoryPath) && (
-                    <button
-                      type="button"
-                      className="test-path-btn"
-                      onClick={() => openDirectory((item as any).directoryPath!)}
-                      title="フォルダを開いてテスト"
-                    >
-                      📁
-                    </button>
-                  )}
-                  {(item as any).directoryPath && !validatePath((item as any).directoryPath) && (
-                    <span className="path-error" title="無効なパス形式です">
-                      ⚠️
-                    </span>
-                  )}
-                </div>
+                <input
+                  type="text"
+                  value={item.content}
+                  onChange={(e) => updateItem(item.id, e.target.value)}
+                  placeholder="チェック項目を入力..."
+                />
                 {items.length > 1 && (
                   <button
                     type="button"

@@ -5,14 +5,14 @@ export interface ChecklistItem {
   content: string;
   completed: boolean;
   order: number;
-  directoryPath?: string;
 }
 
 export interface Template {
   id: string;
   name: string;
   description: string;
-  items: (Omit<ChecklistItem, 'completed'> & { directoryPath?: string })[];
+  items: Omit<ChecklistItem, 'completed'>[];
+  directoryPath?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +23,7 @@ export interface Checklist {
   description: string;
   templateId?: string;
   items: ChecklistItem[];
+  directoryPath?: string;
   createdAt: Date;
   updatedAt: Date;
   completedAt?: Date;

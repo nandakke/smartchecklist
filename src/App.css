@@ -300,6 +300,25 @@ body {
   display: inline-block;
 }
 
+/* ディレクトリパス関連 */
+.template-directory,
+.checklist-directory {
+  margin-bottom: 1rem;
+}
+
+.directory-path-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-help {
+  color: #718096;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
 /* フォームスタイル */
 .template-form,
 .checklist-form {
